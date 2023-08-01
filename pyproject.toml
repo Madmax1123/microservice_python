@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "project"
+version = "0.1.0"
+description = ""
+authors = ["see"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pytest = "^7.4.0"
+sqlalchemy = "^2.0.19"
+uvicorn = "^0.23.2"
+fastapi = "^0.100.1"
+decouple = "^0.0.7"
+yoyo-migrations = "^8.2.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
