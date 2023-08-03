@@ -36,7 +36,7 @@ def check():
     return True 
 
 # Rota para fazer cadastro de um novo usuario com um auto increment de id
-@app.post('/cadastro', status_code=status.HTTP_201_CREATED, response_model=Cadastro)
+@app.post('/cadastro', status_code=status.HTTP_201_CREATED)
 def create_user(user: Cadastro):
     # Criar uma instância do modelo CadastroConf com os dados do usuário recebido
     new_user = CadastroConf(nome=user.nome, senha=user.senha, email=user.email)
