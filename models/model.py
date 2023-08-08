@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String
-from config.config import Base
+from core.config import Base
 
 class CadastroConf(Base):
     __tablename__ = 'users'

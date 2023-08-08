@@ -1,39 +1,12 @@
 from fastapi import FastAPI, status
-from config.config import SessionLocal
+from core.config import SessionLocal
+from fastapi.security import OAuth2PasswordBearer
 from models.model import CadastroConf
 # import da classe Cadastro de usuario
 from schema import Cadastro
 
-
-#arquivo contendo os usuarios
-"""
-users = [
-    {
-        "id": 1,
-        "nome": "name1",
-        "senha": "password1",
-        "email": "email1@email.com"
-    },
-    {
-        "id": 2,
-        "nome": "name2",
-        "senha": "password2",
-        "email": "email2@email.com"
-    },
-    {
-        "id": 3,
-        "nome": "name3",
-        "senha": "password3",
-        "email": "email3@email.com"
-    }
-]
-"""
-
 # Rota para test
 app = FastAPI()
-@app.get('/noob')
-def check():
-    return True 
 
 # Rota para fazer cadastro de um novo usuario com um auto increment de id
 @app.post('/cadastro', status_code=status.HTTP_201_CREATED)
@@ -101,3 +74,4 @@ def get_all_users():
     db = SessionLocal()
     users = db.query(CadastroConf).all()
     return users
+
