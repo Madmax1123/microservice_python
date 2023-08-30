@@ -38,7 +38,7 @@ def login_for_access_token(
 ):
     # Abre uma sessao
     db = SessionLocal()
-    user = db.query(users).filter(User.nome == form_data.username).first()
+    user = db.query(user).filter(user.nome == form_data.username).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
