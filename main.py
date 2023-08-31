@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.exceptions import HTTPException
 from core.auth import create_access_token
 from core.config import SessionLocal, ACCESS_TOKEN_EXPIRE_MINUTES
-from core.security import hash_pass
+from core.security import verify_password, hash_pass
 from models.model import CadastroConf, Token
 from schema import Cadastro
 
@@ -38,13 +38,20 @@ def login_for_access_token(
 ):
     # Abre uma sessao
     db = SessionLocal()
-    user = db.query(CadastroConf).filter(CadastroConf.senha == form_data.password, CadastroConf.nome == form_data.username).first()
+    user = db.query(CadastroConf).filter(CadastroConf.nome == form_data.username).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Incorrect username",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if not verify_password(form_data.password, user.senha):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     access_token_expires = ACCESS_TOKEN_EXPIRE_MINUTES
     access_token = create_access_token(
         sub={"sub": user.nome}
