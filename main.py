@@ -76,7 +76,7 @@ def red_pass(email, senha):
         db.close()
         return "senha alterada"
 
-@app.delete('/users/delete', status_code=status.HTTP_204_NO_CONTENT)
+@app.delete('/users/delete', status_code=status.HTTP_200_OK)
 def delete_user_by_id(user_id):
     # Abre uma sessao
     db = SessionLocal()
@@ -85,11 +85,14 @@ def delete_user_by_id(user_id):
     user = db.query(CadastroConf).filter_by(id=user_id).first()
 
     # Se o usuario foi encontrado, ele vai ser excluido
-    if user:
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"USER NOT FOUND OR ALREADY DELETED WITH ID {user_id}")
+    else:
         db.delete(user)
         db.commit()
-        db.close()
+        db.close()      
     return {"Usuario deletado"}
+    
     
 
 # Lista o id, nome, email e senha dos usuarios
