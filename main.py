@@ -1,11 +1,12 @@
 from datetime import datetime, timedelta
 from typing import Annotated
 from fastapi import FastAPI, status, Depends
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from fastapi.exceptions import HTTPException
 from core.auth import create_access_token
 from core.config import SessionLocal, ACCESS_TOKEN_EXPIRE_MINUTES
 from core.security import verify_password, hash_pass
+from core.deps import get_current_active_user
 from models.model import CadastroConf, Token
 from schema import Cadastro
 
@@ -77,7 +78,9 @@ def red_pass(email, senha):
         return "senha alterada"
 
 @app.delete('/users/delete', status_code=status.HTTP_200_OK)
-def delete_user_by_id(user_id):
+def delete_user_by_id(
+    current_user: Annotated[CadastroConf, Depends(get_current_active_user)], user_id
+    ):    
     # Abre uma sessao
     db = SessionLocal()
 
@@ -91,7 +94,7 @@ def delete_user_by_id(user_id):
         db.delete(user)
         db.commit()
         db.close()      
-    return {"Usuario deletado"}
+    return {f"Usuario {user_id} deletado"}
     
     
 
