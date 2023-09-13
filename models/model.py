@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String
 from core.config import Base
 from pydantic import BaseModel
 
-class CadastroConf(Base):
+class UserCreate(Base):
     __tablename__ = 'users'
     id = Column(Integer, primary_key=True, autoincrement=True)
     nome = Column(String(40))

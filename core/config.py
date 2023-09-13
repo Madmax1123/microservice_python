@@ -9,6 +9,8 @@ DATABASE_URL = "mysql+pymysql://user:userpass@localhost:3306/db"
 JWT_SECRET = 'plEhYlIHpMxIwJrvwxAzTd9zxy4sRtL-UEkW9C_213s'
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+# Url TOKEN
+API_ROUTE = '/api/token'
 
 # Se conecta ao banco de dados
 engine = create_engine(DATABASE_URL)

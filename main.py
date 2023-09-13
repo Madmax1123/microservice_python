@@ -4,10 +4,10 @@ from fastapi import FastAPI, status, Depends
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from fastapi.exceptions import HTTPException
 from core.auth import create_access_token
-from core.config import SessionLocal, ACCESS_TOKEN_EXPIRE_MINUTES
+from core.config import SessionLocal, ACCESS_TOKEN_EXPIRE_MINUTES, API_ROUTE
 from core.security import verify_password, hash_pass
-from core.deps import get_current_active_user
-from models.model import CadastroConf, Token
+from core.deps import get_current_active_user, get_current_user
+from models.model import UserCreate, Token
 from schema import Cadastro
 
 
@@ -19,27 +19,35 @@ app = FastAPI()
 @app.post('/cadastro', status_code=status.HTTP_201_CREATED)
 def create_user(user: Cadastro):
     # Criar uma instância do modelo CadastroConf com os dados do usuário recebido
-    new_user = CadastroConf(nome=user.nome, senha=hash_pass(user.senha), email=user.email)
+    new_user = UserCreate(nome=user.nome, senha=hash_pass(user.senha), email=user.email)
 
     # Abre uma sessao
     db = SessionLocal()
-    # pega os dados e adiociona na db
-    db.add(new_user)
-    # coloca na db
-    db.commit()
-    db.refresh(new_user)
-    db.close()
+    existing_user = db.query(UserCreate).filter_by(email=user.email).first()
+    if existing_user:
+        db.close()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="E-mail already used",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    else:
+        # pega os dados e adiociona na db
+        db.add(new_user)
+         # coloca na db
+        db.commit()
+        db.close()
     return new_user
 
 
 # Rota para fazer login utilizando e-mail e senha existentes
-@app.post('/login', status_code=status.HTTP_200_OK)
+@app.post(f'{API_ROUTE}', status_code=status.HTTP_200_OK)
 def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
 ):
     # Abre uma sessao
     db = SessionLocal()
-    user = db.query(CadastroConf).filter(CadastroConf.nome == form_data.username).first()
+    user = db.query(UserCreate).filter(form_data.username == form_data.username).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -68,7 +76,7 @@ def red_pass(email, senha):
     db = SessionLocal()
 
     # faz uma busca do usuario por e-mail
-    user = db.query(CadastroConf).filter_by(email=email).first()
+    user = db.query(UserCreate).filter_by(email=email).first()
 
     # Se o usuario for encontrado e a senha tiver sido colocada, ela sera alterada
     if user:
@@ -77,15 +85,15 @@ def red_pass(email, senha):
         db.close()
         return "senha alterada"
 
-@app.delete('/users/delete', status_code=status.HTTP_200_OK)
+@app.delete(f'{API_ROUTE}/users/delete', status_code=status.HTTP_200_OK)
 def delete_user_by_id(
-    current_user: Annotated[CadastroConf, Depends(get_current_active_user)], user_id
+    current_user: Annotated[None, Depends(get_current_active_user)], user_id
     ):    
     # Abre uma sessao
     db = SessionLocal()
 
     # Busca o usuario pelo id
-    user = db.query(CadastroConf).filter_by(id=user_id).first()
+    user = db.query(UserCreate).filter_by(id=user_id).first()
 
     # Se o usuario foi encontrado, ele vai ser excluido
     if not user:
@@ -99,9 +107,10 @@ def delete_user_by_id(
     
 
 # Lista o id, nome, email e senha dos usuarios
-@app.get('/users', status_code=status.HTTP_302_FOUND)
-def get_all_users():
+@app.get(f'/users', status_code=status.HTTP_302_FOUND)
+def get_all_users(get_user: Annotated[None, Depends(get_current_user)]   ):
     db = SessionLocal()
-    users = db.query(CadastroConf).all()
+    users = db.query(UserCreate).all()
     return users
+
 
