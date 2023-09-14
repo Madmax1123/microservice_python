@@ -20,7 +20,6 @@ app = FastAPI()
 def create_user(user: Cadastro):
     # Criar uma instância do modelo CadastroConf com os dados do usuário recebido
     new_user = UserCreate(nome=user.nome, senha=hash_pass(user.senha), email=user.email)
-
     # Abre uma sessao
     db = SessionLocal()
     existing_email = db.query(UserCreate).filter_by(email=user.email).first()
@@ -31,7 +30,7 @@ def create_user(user: Cadastro):
             detail="The password cannot be the same as the name",
             headers={"WWW-Authenticate": "Baerer"}
         )
-    elif existing_user:
+    elif existing_email:
         db.close()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -43,6 +42,7 @@ def create_user(user: Cadastro):
         db.add(new_user)
          # coloca na db
         db.commit()
+        db.refresh(new_user)
         db.close()
     return new_user
 
