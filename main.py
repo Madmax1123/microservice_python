@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import FastAPI, status, Depends
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from fastapi.exceptions import HTTPException
-from core.auth import create_access_token
+from core.auth import create_access_token, authlogin
 from core.config import SessionLocal, ACCESS_TOKEN_EXPIRE_MINUTES, API_ROUTE
 from core.security import verify_password, hash_pass
 from core.deps import get_current_active_user, get_current_user
@@ -23,8 +23,15 @@ def create_user(user: Cadastro):
 
     # Abre uma sessao
     db = SessionLocal()
-    existing_user = db.query(UserCreate).filter_by(email=user.email).first()
-    if existing_user:
+    existing_email = db.query(UserCreate).filter_by(email=user.email).first()
+    if user.senha == user.nome:
+        db.close()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The password cannot be the same as the name",
+            headers={"WWW-Authenticate": "Baerer"}
+        )
+    elif existing_user:
         db.close()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -41,33 +48,27 @@ def create_user(user: Cadastro):
 
 
 # Rota para fazer login utilizando e-mail e senha existentes
-@app.post(f'{API_ROUTE}', status_code=status.HTTP_200_OK)
+@app.post(f'{API_ROUTE}', response_model=Token)
 def login_for_access_token(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
+    form_data: OAuth2PasswordRequestForm = Depends(),
 ):
-    # Abre uma sessao
-    db = SessionLocal()
-    user = db.query(UserCreate).filter(form_data.username == form_data.username).first()
-    if not user:
+    user = authlogin(form_data.username, form_data.password)
+
+    if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    if not verify_password(form_data.password, user.senha):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect password",
+            detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    access_token_expires = ACCESS_TOKEN_EXPIRE_MINUTES
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        sub={"sub": user.nome}
+        sub={"email": user.email}, expires_delta=access_token_expires
     )
-    if user:
-        db.close()
+
     return {"access_token": access_token, "token_type": "bearer"}
+
+
 
 # Rota para alterar senha utilizando o e-mail
 @app.put('/esqueci_minha_pass', status_code=status.HTTP_200_OK)
@@ -77,13 +78,32 @@ def red_pass(email, senha):
 
     # faz uma busca do usuario por e-mail
     user = db.query(UserCreate).filter_by(email=email).first()
-
-    # Se o usuario for encontrado e a senha tiver sido colocada, ela sera alterada
-    if user:
-        user.senha = senha
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="This e-mail don't exist",
+            headers={"WWW-Authenticate": "Baerer"}
+        )
+    # Se o usuario for encontrado e a senha tiver sido colocada, ela sera alterado    
+    if senha == user.senha:
+        db.close()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The password cannot be the same as previous",
+            headers={"WWW-Authenticate": "Baerer"}
+        )
+    elif senha == user.nome:
+        db.close()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The password cannot be the same as the name",
+            headers={"WWW-Authenticate": "Baerer"}
+        )
+    else: 
+        user.senha = hash_pass(senha)
         db.commit()
         db.close()
-        return "senha alterada"
+    return "Senha alterada"
 
 @app.delete(f'{API_ROUTE}/users/delete', status_code=status.HTTP_200_OK)
 def delete_user_by_id(
@@ -102,15 +122,16 @@ def delete_user_by_id(
         db.delete(user)
         db.commit()
         db.close()      
-    return {f"Usuario {user_id} deletado"}
+    return {f"User {user_id} deleted"}
     
     
 
 # Lista o id, nome, email e senha dos usuarios
-@app.get(f'/users', status_code=status.HTTP_302_FOUND)
-def get_all_users(get_user: Annotated[None, Depends(get_current_user)]   ):
+@app.get(f'/users')
+def get_all_users(get_user: Annotated[None, Depends(get_current_user)]): 
     db = SessionLocal()
     users = db.query(UserCreate).all()
-    return users
+    return_ok = HTTPException(status_code=status.HTTP_200_OK, detail="RETURNED ALL USERS", headers={"WWW-Authenticate": "Bearer"})
+    return users, return_ok
 
 
